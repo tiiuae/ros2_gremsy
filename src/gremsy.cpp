@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "ros2_gremsy/gremsy.hpp"
-#include "ros2_gremsy/utils.hpp"
 
 namespace ros2_gremsy
 {
@@ -107,11 +106,68 @@ GremsyDriver::~GremsyDriver()
 void GremsyDriver::gimbalStateTimerCallback()
 {
   RCLCPP_INFO(this->get_logger(), "Gimbal state timer callback");
+  // Publish Gimbal IMU
+  mavlink_raw_imu_t imu_mav = gimbal_interface_->get_gimbal_raw_imu();
+  imu_mav.time_usec = gimbal_interface_->get_gimbal_time_stamps().raw_imu;   // TODO implement rostime
+  sensor_msgs::msg::Imu imu_ros_mag = convertImuMavlinkMessageToROSMessage(imu_mav);
+  imu_pub_->publish(imu_ros_mag);
+
+  // Publish Gimbal Encoder Values
+  mavlink_mount_status_t mount_status = gimbal_interface_->get_gimbal_mount_status();
+  geometry_msgs::msg::Vector3Stamped encoder_ros_msg;
+  encoder_ros_msg.header.stamp = this->get_clock()->now();
+  encoder_ros_msg.vector.x = ((float) mount_status.pointing_b) * DEG_TO_RAD;
+  encoder_ros_msg.vector.y = ((float) mount_status.pointing_a) * DEG_TO_RAD;
+  encoder_ros_msg.vector.z = ((float) mount_status.pointing_c) * DEG_TO_RAD;
+  // encoder_ros_msg.header TODO time stamps
+
+  encoder_pub_->publish(encoder_ros_msg);
+
+  // Get Mount Orientation
+  mavlink_mount_orientation_t mount_orientation = gimbal_interface_->get_gimbal_mount_orientation();
+
+  yaw_difference_ = DEG_TO_RAD * (mount_orientation.yaw_absolute - mount_orientation.yaw);
+
+  // Publish Camera Mount Orientation in global frame (drifting)
+  mount_orientation_global_pub_->publish(
+    stampQuaternion(
+      tf2::toMsg(
+        convertYXZtoQuaternion(
+          mount_orientation.roll,
+          mount_orientation.pitch,
+          mount_orientation.yaw_absolute)),
+      "gimbal_link", this->get_clock()->now()));
+
+  // Publish Camera Mount Orientation in local frame (yaw relative to vehicle)
+  mount_orientation_local_pub_->publish(
+    stampQuaternion(
+      tf2::toMsg(
+        convertYXZtoQuaternion(
+          mount_orientation.roll,
+          mount_orientation.pitch,
+          mount_orientation.yaw)),
+      "gimbal_link", this->get_clock()->now()));
 }
 
 void GremsyDriver::gimbalGoalTimerCallback()
 {
   RCLCPP_INFO(this->get_logger(), "Gimbal goal timer callback");
+  double z = goals_->vector.z;
+
+  if (lock_yaw_to_vehicle_) {
+    z += yaw_difference_;
+  }
+
+  gimbal_interface_->set_gimbal_move(
+    RAD_TO_DEG * goals_->vector.y,
+    RAD_TO_DEG * goals_->vector.x,
+    RAD_TO_DEG * z);
+}
+
+void GremsyDriver::desiredOrientationCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
+{
+
+  goals_ = msg;
 }
 
 void GremsyDriver::declareParameters()

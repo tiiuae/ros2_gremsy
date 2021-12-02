@@ -8,6 +8,7 @@
 
 #include <gSDK/src/gimbal_interface.h>
 #include <gSDK/src/serial_port.h>
+#include "ros2_gremsy/utils.hpp"
 
 namespace ros2_gremsy
 {
@@ -55,8 +56,9 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr desired_mount_orientation_sub_;
 
   // @brief Store goals
-  geometry_msgs::msg::Vector3Stamped goals_;
-
+  geometry_msgs::msg::Vector3Stamped::SharedPtr goals_;
+  // @brief Store yaw difference
+  double yaw_difference_ = 0;
 
   // @brief Timer for pooling data from gremsy
   rclcpp::TimerBase::SharedPtr pool_timer_;

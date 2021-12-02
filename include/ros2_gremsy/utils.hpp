@@ -34,6 +34,13 @@
 #include "rclcpp/rclcpp.hpp"
 #include <gSDK/src/gimbal_interface.h>
 #include <gSDK/src/serial_port.h>
+#include <tf2_eigen/tf2_eigen.h>
+#include <sensor_msgs/msg/imu.hpp>
+#include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <geometry_msgs/msg/quaternion_stamped.hpp>
+
+#define DEG_TO_RAD (M_PI / 180.0)
+#define RAD_TO_DEG (180.0 / M_PI)
 
 namespace ros2_gremsy
 {
@@ -113,6 +120,40 @@ control_gimbal_axis_input_mode_t convertIntToAxisInputMode(int mode)
         default:
             return CTRL_ANGLE_ABSOLUTE_FRAME;
     }
+}
+Eigen::Quaterniond convertYXZtoQuaternion(double roll, double pitch, double yaw)
+{
+    Eigen::Quaterniond quat_abs(
+                  Eigen::AngleAxisd(-DEG_TO_RAD * pitch, Eigen::Vector3d::UnitY())
+                * Eigen::AngleAxisd(-DEG_TO_RAD * roll, Eigen::Vector3d::UnitX())
+                * Eigen::AngleAxisd(DEG_TO_RAD * yaw, Eigen::Vector3d::UnitZ()));
+    return quat_abs;
+}
+
+sensor_msgs::msg::Imu convertImuMavlinkMessageToROSMessage(mavlink_raw_imu_t message)
+{
+    sensor_msgs::msg::Imu imu_message;
+
+    // Set accelaration data
+    imu_message.linear_acceleration.x = message.xacc;
+    imu_message.linear_acceleration.y = message.yacc;
+    imu_message.linear_acceleration.z = message.zacc;
+
+    // Set gyro data
+    imu_message.angular_velocity.x = message.xgyro;
+    imu_message.angular_velocity.y = message.ygyro;
+    imu_message.angular_velocity.z = message.zgyro;
+
+    return imu_message;
+}
+
+geometry_msgs::msg::QuaternionStamped stampQuaternion(geometry_msgs::msg::Quaternion quat, std::string frame_id, builtin_interfaces::msg::Time time)
+{
+    geometry_msgs::msg::QuaternionStamped quat_stamped;
+    quat_stamped.header.frame_id = frame_id;
+    quat_stamped.header.stamp = time;
+    quat_stamped.quaternion = quat;
+    return quat_stamped;
 }
 
 }  // namespace ros2_gremsy
