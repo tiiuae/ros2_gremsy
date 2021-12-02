@@ -5,17 +5,45 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(builtin_interfaces REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+include_directories(include)
+
+include_directories(
+        gSDK/src/mavlink/include/mavlink/v2.0
+        gSDK/src/
+)
+
+set(SOURCES src/gremsy.cpp gSDK/src/serial_port.cpp gSDK/src/gimbal_interface.cpp)
+
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_executable(gremsy src/gremsy.cpp)
-target_include_directories(gremsy PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(gremsy PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+add_library(gremsy ${SOURCES})
+#target_include_directories(gremsy PUBLIC
+#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#  $<INSTALL_INTERFACE:include>
+#  ${CMAKE_SOURCE_DIR}/gSDK/src)
+
+ament_target_dependencies(gremsy PUBLIC rclcpp std_msgs sensor_msgs geometry_msgs tf2 tf2_geometry_msgs Eigen3 builtin_interfaces)
+
+
+# DepthAI GStreamer as separate node
+add_executable(gremsy_node src/gremsy_node.cpp)
+ament_target_dependencies(gremsy_node PUBLIC rclcpp rclcpp_components)
+target_link_libraries(gremsy_node PUBLIC gremsy)
 
 install(TARGETS gremsy
   DESTINATION lib/${PROJECT_NAME})

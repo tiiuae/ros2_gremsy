@@ -1,0 +1,3 @@
+[submodule "gSDK"]
+	path = gSDK
+	url = https://github.com/Gremsy/gSDK.git
