@@ -32,12 +32,13 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include <gSDK/src/gimbal_interface.h>
-#include <gSDK/src/serial_port.h>
 #include <tf2_eigen/tf2_eigen.h>
 #include <sensor_msgs/msg/imu.hpp>
 #include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <geometry_msgs/msg/quaternion_stamped.hpp>
+
+#include <../../gSDK/src/gimbal_interface.h>
+#include <../../gSDK/src/serial_port.h>
 
 #define DEG_TO_RAD (M_PI / 180.0)
 #define RAD_TO_DEG (180.0 / M_PI)
@@ -84,8 +85,7 @@ rcl_interfaces::msg::ParameterDescriptor getParamDescriptor(
   const std::string & description,
   const uint8_t & type,
   int from_value,
-  int to_value,
-  int step)
+  int to_value)
 {
   auto descriptor = rcl_interfaces::msg::ParameterDescriptor();
 
@@ -95,7 +95,7 @@ rcl_interfaces::msg::ParameterDescriptor getParamDescriptor(
   descriptor.integer_range.resize(1);
   descriptor.integer_range[0].from_value = from_value;
   descriptor.integer_range[0].to_value = to_value;
-  descriptor.integer_range[0].step = step;
+  descriptor.integer_range[0].step = 1;
   return descriptor;
 }
 

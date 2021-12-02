@@ -24,8 +24,8 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
   declareParameters();
   com_port_ = this->get_parameter("com_port").as_string();
   baud_rate_ = this->get_parameter("baud_rate").as_int();
-  state_poll_rate_ = this->get_parameter("state_poll_rate").as_int();
-  goal_push_rate_ = this->get_parameter("goal_push_rate").as_int();
+  state_poll_rate_ = this->get_parameter("state_poll_rate").as_double();
+  goal_push_rate_ = this->get_parameter("goal_push_rate").as_double();
   gimbal_mode_ = this->get_parameter("gimbal_mode").as_int();
   tilt_axis_input_mode_ = this->get_parameter("tilt_axis_input_mode").as_int();
   tilt_axis_stabilize_ = this->get_parameter("tilt_axis_stabilize").as_bool();
@@ -200,13 +200,13 @@ void GremsyDriver::declareParameters()
     "gimbal_mode", 1,
     getParamDescriptor(
       "gimbal_mode", "Control mode of the gimbal",
-      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2, 1));
+      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
 
   this->declare_parameter(
     "tilt_axis_input_mode", 2,
     getParamDescriptor(
       "tilt_axis_input_mode", "Input mode of the gimbals tilt axis",
-      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2, 1));
+      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
 
   this->declare_parameter(
     "tilt_axis_stabilize", true,
@@ -218,7 +218,7 @@ void GremsyDriver::declareParameters()
     "roll_axis_input_mode", 2,
     getParamDescriptor(
       "roll_axis_input_mode", "Input mode of the gimbals tilt roll",
-      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2, 1));
+      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
 
   this->declare_parameter(
     "roll_axis_stabilize", true,
@@ -230,7 +230,7 @@ void GremsyDriver::declareParameters()
     "pan_axis_input_mode", 2,
     getParamDescriptor(
       "pan_axis_input_mode", "Input mode of the gimbals tilt pan",
-      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2, 1));
+      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
 
   this->declare_parameter(
     "pan_axis_stabilize", true,

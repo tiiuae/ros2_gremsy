@@ -6,8 +6,8 @@
 #include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <geometry_msgs/msg/quaternion_stamped.hpp>
 
-#include <gSDK/src/gimbal_interface.h>
-#include <gSDK/src/serial_port.h>
+#include <../../gSDK/src/gimbal_interface.h>
+#include <../../gSDK/src/serial_port.h>
 #include "ros2_gremsy/utils.hpp"
 
 namespace ros2_gremsy
