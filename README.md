@@ -1,6 +1,6 @@
 # ros2_gremsy
 
-Under heavy development. Might not work properly.
+Under development. This package is not yet tested with real hardware.
 
 # References
 
