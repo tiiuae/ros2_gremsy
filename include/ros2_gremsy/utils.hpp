@@ -101,60 +101,79 @@ inline rcl_interfaces::msg::ParameterDescriptor getParamDescriptor(
 
 inline control_gimbal_mode_t convertIntGimbalMode(int mode)
 {   // Allows int access to the control_gimbal_mode_t struct
-    switch(mode) {
-        case 0 : return GIMBAL_OFF;
-        case 1 : return LOCK_MODE;
-        case 2 : return FOLLOW_MODE;
-        default:
-            return GIMBAL_OFF;
-    }
+  switch (mode) {
+    case 0: return GIMBAL_OFF;
+    case 1: return LOCK_MODE;
+    case 2: return FOLLOW_MODE;
+    default:
+      return GIMBAL_OFF;
+  }
 }
 
 
 inline control_gimbal_axis_input_mode_t convertIntToAxisInputMode(int mode)
 {   // Allows int access to the control_gimbal_axis_input_mode_t struct
-    switch(mode) {
-        case 0 : return CTRL_ANGLE_BODY_FRAME;
-        case 1 : return CTRL_ANGULAR_RATE;
-        case 2 : return CTRL_ANGLE_ABSOLUTE_FRAME;
-        default:
-            return CTRL_ANGLE_ABSOLUTE_FRAME;
-    }
+  switch (mode) {
+    case 0: return CTRL_ANGLE_BODY_FRAME;
+    case 1: return CTRL_ANGULAR_RATE;
+    case 2: return CTRL_ANGLE_ABSOLUTE_FRAME;
+    default:
+      return CTRL_ANGLE_ABSOLUTE_FRAME;
+  }
 }
 inline Eigen::Quaterniond convertYXZtoQuaternion(double roll, double pitch, double yaw)
 {
-    Eigen::Quaterniond quat_abs(
-                  Eigen::AngleAxisd(-DEG_TO_RAD * pitch, Eigen::Vector3d::UnitY())
-                * Eigen::AngleAxisd(-DEG_TO_RAD * roll, Eigen::Vector3d::UnitX())
-                * Eigen::AngleAxisd(DEG_TO_RAD * yaw, Eigen::Vector3d::UnitZ()));
-    return quat_abs;
+  Eigen::Quaterniond quat_abs(
+    Eigen::AngleAxisd(-DEG_TO_RAD * pitch, Eigen::Vector3d::UnitY()) *
+    Eigen::AngleAxisd(-DEG_TO_RAD * roll, Eigen::Vector3d::UnitX()) *
+    Eigen::AngleAxisd(DEG_TO_RAD * yaw, Eigen::Vector3d::UnitZ()));
+  return quat_abs;
 }
 
 inline sensor_msgs::msg::Imu convertImuMavlinkMessageToROSMessage(mavlink_raw_imu_t message)
 {
-    sensor_msgs::msg::Imu imu_message;
+  sensor_msgs::msg::Imu imu_message;
 
-    // Set accelaration data
-    imu_message.linear_acceleration.x = message.xacc;
-    imu_message.linear_acceleration.y = message.yacc;
-    imu_message.linear_acceleration.z = message.zacc;
+  // Set accelaration data
+  imu_message.linear_acceleration.x = message.xacc;
+  imu_message.linear_acceleration.y = message.yacc;
+  imu_message.linear_acceleration.z = message.zacc;
 
-    // Set gyro data
-    imu_message.angular_velocity.x = message.xgyro;
-    imu_message.angular_velocity.y = message.ygyro;
-    imu_message.angular_velocity.z = message.zgyro;
+  // Set gyro data
+  imu_message.angular_velocity.x = message.xgyro;
+  imu_message.angular_velocity.y = message.ygyro;
+  imu_message.angular_velocity.z = message.zgyro;
 
-    return imu_message;
+  return imu_message;
 }
 
-inline geometry_msgs::msg::QuaternionStamped stampQuaternion(geometry_msgs::msg::Quaternion quat, std::string frame_id, builtin_interfaces::msg::Time time)
+inline geometry_msgs::msg::QuaternionStamped stampQuaternion(
+  geometry_msgs::msg::Quaternion quat,
+  std::string frame_id,
+  builtin_interfaces::msg::Time time)
 {
-    geometry_msgs::msg::QuaternionStamped quat_stamped;
-    quat_stamped.header.frame_id = frame_id;
-    quat_stamped.header.stamp = time;
-    quat_stamped.quaternion = quat;
-    return quat_stamped;
+  geometry_msgs::msg::QuaternionStamped quat_stamped;
+  quat_stamped.header.frame_id = frame_id;
+  quat_stamped.header.stamp = time;
+  quat_stamped.quaternion = quat;
+  return quat_stamped;
 }
+
+inline double limitAngle(double angle, double min, double max)
+{
+  if (angle > max) {
+    return max;
+  } else if (angle < min) {
+    return min;
+  }
+  return angle;
+}
+
+inline double limitAngle(double angle, double range)
+{
+  limitAngle(angle, -range, range);
+}
+
 
 }  // namespace ros2_gremsy
 

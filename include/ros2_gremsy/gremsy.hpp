@@ -13,6 +13,17 @@
 
 #define DEG_TO_RAD (M_PI / 180.0)
 #define RAD_TO_DEG (180.0 / M_PI)
+
+enum gremsy_model_t
+{
+  GREMSY_MIO = 0,
+  GREMSY_S1,
+  GREMSY_T3V3,
+  GREMSY_T7,
+  NUM_OF_MODELS
+};
+
+
 namespace ros2_gremsy
 {
 
@@ -35,6 +46,65 @@ private:
   void gimbalStateTimerCallback();
 
   void gimbalGoalTimerCallback();
+
+
+  /**
+   * @brief Struct for device specific limits
+   */
+  struct
+  {
+    const gremsy_model_t device_name;
+    const double min_pan;
+    const double max_pan;
+    const double min_tilt;
+    const double max_tilt;
+    const double min_roll;
+    const double max_roll;
+  } device_specifications_[NUM_OF_MODELS] = {
+    {GREMSY_MIO, -325.0, 325.0, -120.0, 120.0, -40.0, 40.0},
+    {GREMSY_S1, -345.0, 345.0, -120.0, 120.0, -45.0, 45.0},
+    {GREMSY_T3V3, -345.0, 345.0, -120.0, 120.0, -45.0, 45.0},
+    {GREMSY_T7, -300.0, 300.0, -120.0, 120.0, -45.0, 45.0},
+  };
+
+  /**
+   * @brief Limit the desired orientation to the device specifications
+   * Enforce gimbal limits on the desired orientation
+   * @param msg Vector3Stamped desired orientation message
+   * @param model gremsy_model_t for specific limits of the device
+   * @param lock_yaw_to_vehicle If true, the yaw will be locked to the vehicle's yaw
+   * @param yaw_difference Mount yaw orientation absolute difference from mount yaw
+   * @return Vector3d of desired orientation in degrees (x:roll, y:pitch, z:yaw)
+   *
+   */
+  Eigen::Vector3d prepareGimbalMove(
+    const geometry_msgs::msg::Vector3Stamped::SharedPtr & msg, const int model,
+    const bool lock_yaw_to_vehicle=false, const double yaw_difference = 0.0)
+  {
+    Eigen::Vector3d gimbal_move (msg->vector.x, msg->vector.y, msg->vector.z);
+    gimbal_move.x() = RAD_TO_DEG * std::fmin(
+      std::fmax(
+        msg->vector.z + (lock_yaw_to_vehicle ? 0.0 : yaw_difference),
+        device_specifications_[model].min_roll),
+      device_specifications_[model].max_roll);
+
+    gimbal_move.y() = RAD_TO_DEG * std::fmin(
+      std::fmax(
+        msg->vector.y,
+        device_specifications_[model].min_tilt),
+      device_specifications_[model].max_tilt);
+
+    gimbal_move.z() = RAD_TO_DEG * std::fmin(
+      std::fmax(
+        msg->vector.x,
+        device_specifications_[model].min_pan),
+      device_specifications_[model].max_pan);
+
+    return gimbal_move;
+  }
+
+  // @brief Device 
+  gremsy_model_t device_id_;
 
   // @brief Serial port object
   Serial_Port * serial_port_;
@@ -59,7 +129,7 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr desired_mount_orientation_sub_;
 
   // @brief Store goals
-  geometry_msgs::msg::Vector3Stamped::SharedPtr goals_;
+  geometry_msgs::msg::Vector3Stamped::SharedPtr goal_;
   // @brief Store yaw difference
   double yaw_difference_ = 0;
 

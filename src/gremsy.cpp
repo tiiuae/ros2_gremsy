@@ -22,6 +22,7 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
 {
 
   declareParameters();
+  device_id_ = gremsy_model_t(this->get_parameter("device_id").as_int());
   com_port_ = this->get_parameter("com_port").as_string();
   baud_rate_ = this->get_parameter("baud_rate").as_int();
   state_poll_rate_ = this->get_parameter("state_poll_rate").as_double();
@@ -152,26 +153,29 @@ void GremsyDriver::gimbalStateTimerCallback()
 void GremsyDriver::gimbalGoalTimerCallback()
 {
   RCLCPP_INFO(this->get_logger(), "Gimbal goal timer callback");
-  double z = goals_->vector.z;
-
-  if (lock_yaw_to_vehicle_) {
-    z += yaw_difference_;
-  }
+  Eigen::Vector3d desired_orientation_eigen = prepareGimbalMove(
+    goal_, device_id_, lock_yaw_to_vehicle_, yaw_difference_);
 
   gimbal_interface_->set_gimbal_move(
-    RAD_TO_DEG * goals_->vector.y,
-    RAD_TO_DEG * goals_->vector.x,
-    RAD_TO_DEG * z);
+    desired_orientation_eigen.y(),
+    desired_orientation_eigen.x(),
+    desired_orientation_eigen.z());
 }
 
-void GremsyDriver::desiredOrientationCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
+void GremsyDriver::desiredOrientationCallback(
+  const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
 {
-
-  goals_ = msg;
+  goal_ = msg;
 }
 
 void GremsyDriver::declareParameters()
 {
+  this->declare_parameter(
+    "device_id", 0,
+    getParamDescriptor(
+      "device_id", "Device id- 0: MIO, 1: S1, 2: T3V3, 3: T7",
+      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 3));
+    
   this->declare_parameter(
     "com_port", "/dev/ttyUSB0",
     getParamDescriptor(
@@ -185,7 +189,7 @@ void GremsyDriver::declareParameters()
       rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER));
 
   this->declare_parameter(
-    "state_poll_rate", 10.0,
+    "state_poll_rate", 50.0,
     getParamDescriptor(
       "state_poll_rate", "Rate in which the gimbal data is polled and published",
       rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE, 0.0, 300.0, 1.0));
@@ -205,7 +209,8 @@ void GremsyDriver::declareParameters()
   this->declare_parameter(
     "tilt_axis_input_mode", 2,
     getParamDescriptor(
-      "tilt_axis_input_mode", "Input mode of the gimbals tilt axis",
+      "tilt_axis_input_mode",
+      "Input mode of the gimbals tilt axis, 0: angle body, 1: ground angular rate, 2: ground absolute angle",
       rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
 
   this->declare_parameter(
@@ -217,7 +222,8 @@ void GremsyDriver::declareParameters()
   this->declare_parameter(
     "roll_axis_input_mode", 2,
     getParamDescriptor(
-      "roll_axis_input_mode", "Input mode of the gimbals tilt roll",
+      "roll_axis_input_mode",
+      "Input mode of the gimbals tilt roll, 0: angle body, 1: ground angular rate, 2: ground absolute angle",
       rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
 
   this->declare_parameter(
@@ -229,7 +235,8 @@ void GremsyDriver::declareParameters()
   this->declare_parameter(
     "pan_axis_input_mode", 2,
     getParamDescriptor(
-      "pan_axis_input_mode", "Input mode of the gimbals tilt pan",
+      "pan_axis_input_mode",
+      "Input mode of the gimbals tilt pan, 0: angle body, 1: ground angular rate, 2: ground absolute angle",
       rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
 
   this->declare_parameter(
