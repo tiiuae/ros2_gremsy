@@ -12,13 +12,13 @@ namespace ros2_gremsy
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options)
-: Node("ros2_gremsy", options), com_port_("COM3")
+: Node("ros2_gremsy", options), com_port_("/dev/ttyUSB0"), use_ros_time_(true)
 {
-  GremsyDriver(options, "COM3");
+  GremsyDriver(options, "/dev/ttyUSB0");
 }
 
 GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::string & com_port)
-: Node("ros2_gremsy", options)
+: Node("ros2_gremsy", options), use_ros_time_(true)
 {
 
   declareParameters();
@@ -109,14 +109,23 @@ void GremsyDriver::gimbalStateTimerCallback()
   RCLCPP_INFO(this->get_logger(), "Gimbal state timer callback");
   // Publish Gimbal IMU
   mavlink_raw_imu_t imu_mav = gimbal_interface_->get_gimbal_raw_imu();
-  imu_mav.time_usec = gimbal_interface_->get_gimbal_time_stamps().raw_imu;   // TODO implement rostime
+  imu_mav.time_usec = gimbal_interface_->get_gimbal_time_stamps().raw_imu;  
   sensor_msgs::msg::Imu imu_ros_mag = convertImuMavlinkMessageToROSMessage(imu_mav);
+
+  imu_ros_mag.header.stamp = use_ros_time_ ? this->get_clock()->now() : rclcpp::Time(
+    (int64_t)imu_mav.time_usec * 1000UL);
   imu_pub_->publish(imu_ros_mag);
 
   // Publish Gimbal Encoder Values
   mavlink_mount_status_t mount_status = gimbal_interface_->get_gimbal_mount_status();
+  uint64_t mnt_status_time_stamp = gimbal_interface_->get_gimbal_time_stamps().mount_status;
+  // TODO: Confirm that the mount status timestamp is in microseconds
+
   geometry_msgs::msg::Vector3Stamped encoder_ros_msg;
-  encoder_ros_msg.header.stamp = this->get_clock()->now();
+
+  encoder_ros_msg.header.stamp = use_ros_time_ ? this->get_clock()->now() : rclcpp::Time(
+    (int64_t)mnt_status_time_stamp * 1000UL);
+
   encoder_ros_msg.vector.x = ((float) mount_status.pointing_b) * DEG_TO_RAD;
   encoder_ros_msg.vector.y = ((float) mount_status.pointing_a) * DEG_TO_RAD;
   encoder_ros_msg.vector.z = ((float) mount_status.pointing_c) * DEG_TO_RAD;
@@ -126,7 +135,11 @@ void GremsyDriver::gimbalStateTimerCallback()
 
   // Get Mount Orientation
   mavlink_mount_orientation_t mount_orientation = gimbal_interface_->get_gimbal_mount_orientation();
+  mount_orientation.time_boot_ms = gimbal_interface_->get_gimbal_time_stamps().mount_orientation;
 
+  rclcpp::Time stamp = use_ros_time_ ? this->get_clock()->now() : rclcpp::Time(
+    (int64_t)mount_orientation.time_boot_ms * 1000000UL);
+  
   yaw_difference_ = DEG_TO_RAD * (mount_orientation.yaw_absolute - mount_orientation.yaw);
 
   // Publish Camera Mount Orientation in global frame (drifting)
@@ -137,7 +150,7 @@ void GremsyDriver::gimbalStateTimerCallback()
           mount_orientation.roll,
           mount_orientation.pitch,
           mount_orientation.yaw_absolute)),
-      "gimbal_link", this->get_clock()->now()));
+      "gimbal_link", stamp));
 
   // Publish Camera Mount Orientation in local frame (yaw relative to vehicle)
   mount_orientation_local_pub_->publish(
@@ -147,7 +160,7 @@ void GremsyDriver::gimbalStateTimerCallback()
           mount_orientation.roll,
           mount_orientation.pitch,
           mount_orientation.yaw)),
-      "gimbal_link", this->get_clock()->now()));
+      "gimbal_link", stamp));
 }
 
 void GremsyDriver::gimbalGoalTimerCallback()
@@ -175,7 +188,7 @@ void GremsyDriver::declareParameters()
     getParamDescriptor(
       "device_id", "Device id- 0: MIO, 1: S1, 2: T3V3, 3: T7",
       rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 3));
-    
+
   this->declare_parameter(
     "com_port", "/dev/ttyUSB0",
     getParamDescriptor(

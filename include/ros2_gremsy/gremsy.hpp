@@ -41,16 +41,23 @@ private:
    */
   void desiredOrientationCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg);
 
+  /// Declare Parameters for the nodes
   void declareParameters();
 
+  /**
+   * @brief State of the gimbal will be pooled by a timer
+   * This callback will get IMU, encoders, and mount orientation
+   */
   void gimbalStateTimerCallback();
 
+  /**
+   * @brief This callback will get the last command from ROS2 topic,
+   * and send it to the gimbal
+   */
   void gimbalGoalTimerCallback();
 
 
-  /**
-   * @brief Struct for device specific limits
-   */
+  /// Struct for device specific limits
   struct
   {
     const gremsy_model_t device_name;
@@ -79,9 +86,9 @@ private:
    */
   Eigen::Vector3d prepareGimbalMove(
     const geometry_msgs::msg::Vector3Stamped::SharedPtr & msg, const int model,
-    const bool lock_yaw_to_vehicle=false, const double yaw_difference = 0.0)
+    const bool lock_yaw_to_vehicle = false, const double yaw_difference = 0.0)
   {
-    Eigen::Vector3d gimbal_move (msg->vector.x, msg->vector.y, msg->vector.z);
+    Eigen::Vector3d gimbal_move(msg->vector.x, msg->vector.y, msg->vector.z);
     gimbal_move.x() = RAD_TO_DEG * std::fmin(
       std::fmax(
         msg->vector.z + (lock_yaw_to_vehicle ? 0.0 : yaw_difference),
@@ -103,67 +110,69 @@ private:
     return gimbal_move;
   }
 
-  // @brief Device 
+  /// Device
   gremsy_model_t device_id_;
 
-  // @brief Serial port object
+  /// Serial port object
   Serial_Port * serial_port_;
 
-  // @brief Gimbal interface object
+  /// Gimbal interface object
   Gimbal_Interface * gimbal_interface_;
 
 
-  // @brief Publisher for IMU data from gremsy
+  /// Publisher for IMU data from gremsy
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
 
-  // @brief Publisher for encoder Vector3 data from gremsy
+  /// Publisher for encoder Vector3 data from gremsy
   rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr encoder_pub_;
 
-  // @brief Publisher for mount orientation global yaw Quaternion data
+  /// Publisher for mount orientation global yaw Quaternion data
   rclcpp::Publisher<geometry_msgs::msg::QuaternionStamped>::SharedPtr mount_orientation_global_pub_;
 
-  // @brief Publisher for mount orientation local yaw Quaternion data
+  /// Publisher for mount orientation local yaw Quaternion data
   rclcpp::Publisher<geometry_msgs::msg::QuaternionStamped>::SharedPtr mount_orientation_local_pub_;
 
-  // @brief Subscriber for desired mount orientation Vector3
+  /// Subscriber for desired mount orientation Vector3
   rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr desired_mount_orientation_sub_;
 
-  // @brief Store goals
+  /// Store goals
   geometry_msgs::msg::Vector3Stamped::SharedPtr goal_;
-  // @brief Store yaw difference
+  /// Store yaw difference
   double yaw_difference_ = 0;
 
-  // @brief Timer for pooling data from gremsy
+  /// Timer for pooling data from gremsy
   rclcpp::TimerBase::SharedPtr pool_timer_;
-  // @brief Timer for sending goals to gremsy
+  /// Timer for sending goals to gremsy
   rclcpp::TimerBase::SharedPtr goal_timer_;
 
-  // @brief Serial COM port to use
+  /// Serial COM port to use
   std::string com_port_;
 
-  // @brief Serial baud rate to use
+  /// Serial baud rate to use
   int baud_rate_;
 
-  // @brief Rate in which the gimbal data is polled and published
+  /// Rate in which the gimbal data is polled and published
   double state_poll_rate_;
-  // @brief Rate in which the gimbal are pushed to the gimbal
+  /// Rate in which the gimbal are pushed to the gimbal
   double goal_push_rate_;
-  // @brief Control mode of the gimbal
+  /// Control mode of the gimbal
   int gimbal_mode_;
-  // @brief Input mode of the gimbals tilt axis
+  /// Input mode of the gimbals tilt axis
   int tilt_axis_input_mode_;
-  // @brief Input mode of the gimbals tilt roll
+  /// Input mode of the gimbals tilt roll
   int roll_axis_input_mode_;
-  // @brief Input mode of the gimbals tilt pan
+  /// Input mode of the gimbals tilt pan
   int pan_axis_input_mode_;
-  // @brief Input mode of the gimbals tilt pan
+  /// Input mode of the gimbals tilt pan
   bool tilt_axis_stabilize_;
-  // @brief Input mode of the gimbals tilt pan
+  /// Input mode of the gimbals tilt pan
   bool roll_axis_stabilize_;
-  // @brief Input mode of the gimbals tilt pan
+  /// Input mode of the gimbals tilt pan
   bool pan_axis_stabilize_;
-  // @brief Uses the yaw relative to the gimbal mount to prevent drift issues. Only a light stabilization is applied.
+  /// Uses the yaw relative to the gimbal mount to prevent drift issues. Only a light stabilization is applied.
   bool lock_yaw_to_vehicle_;
+  /// Time source for the published messages, ros node time is true
+  bool use_ros_time_;
 
 };
 
