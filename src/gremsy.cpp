@@ -24,7 +24,7 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
   declareParameters();
   device_id_ = gremsy_model_t(this->get_parameter("device_id").as_int());
   com_port_ = this->get_parameter("com_port").as_string();
-  baud_rate_ = this->get_parameter("baud_rate").as_int();
+  baud_rate_ = this->get_parameter("baudrate").as_int();
   state_poll_rate_ = this->get_parameter("state_poll_rate").as_double();
   goal_push_rate_ = this->get_parameter("goal_push_rate").as_double();
   gimbal_mode_ = this->get_parameter("gimbal_mode").as_int();
@@ -35,7 +35,6 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
   pan_axis_input_mode_ = this->get_parameter("pan_axis_input_mode").as_int();
   pan_axis_stabilize_ = this->get_parameter("pan_axis_stabilize").as_bool();
   lock_yaw_to_vehicle_ = this->get_parameter("lock_yaw_to_vehicle").as_bool();
-
 
   // Initialize publishers
   this->imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("~/imu", 10);
@@ -51,8 +50,8 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
 
   // Initialize subscribers
   this->desired_mount_orientation_sub_ =
-    this->create_subscription<geometry_msgs::msg::QuaternionStamped>(
-    "~/mount_orientation_local", 10,
+    this->create_subscription<geometry_msgs::msg::Vector3Stamped>(
+    "~/gimbal_goal", 10,
     std::bind(&GremsyDriver::desiredOrientationCallback, this, std::placeholders::_1));
 
 
@@ -106,10 +105,10 @@ GremsyDriver::~GremsyDriver()
 
 void GremsyDriver::gimbalStateTimerCallback()
 {
-  RCLCPP_INFO(this->get_logger(), "Gimbal state timer callback");
+  RCLCPP_DEBUG(this->get_logger(), "Gimbal state timer callback");
   // Publish Gimbal IMU
   mavlink_raw_imu_t imu_mav = gimbal_interface_->get_gimbal_raw_imu();
-  imu_mav.time_usec = gimbal_interface_->get_gimbal_time_stamps().raw_imu;  
+  imu_mav.time_usec = gimbal_interface_->get_gimbal_time_stamps().raw_imu;
   sensor_msgs::msg::Imu imu_ros_mag = convertImuMavlinkMessageToROSMessage(imu_mav);
 
   imu_ros_mag.header.stamp = use_ros_time_ ? this->get_clock()->now() : rclcpp::Time(
@@ -139,7 +138,7 @@ void GremsyDriver::gimbalStateTimerCallback()
 
   rclcpp::Time stamp = use_ros_time_ ? this->get_clock()->now() : rclcpp::Time(
     (int64_t)mount_orientation.time_boot_ms * 1000000UL);
-  
+
   yaw_difference_ = DEG_TO_RAD * (mount_orientation.yaw_absolute - mount_orientation.yaw);
 
   // Publish Camera Mount Orientation in global frame (drifting)
@@ -165,14 +164,19 @@ void GremsyDriver::gimbalStateTimerCallback()
 
 void GremsyDriver::gimbalGoalTimerCallback()
 {
-  RCLCPP_INFO(this->get_logger(), "Gimbal goal timer callback");
-  Eigen::Vector3d desired_orientation_eigen = prepareGimbalMove(
-    goal_, device_id_, lock_yaw_to_vehicle_, yaw_difference_);
-
-  gimbal_interface_->set_gimbal_move(
-    desired_orientation_eigen.y(),
-    desired_orientation_eigen.x(),
-    desired_orientation_eigen.z());
+  RCLCPP_DEBUG(this->get_logger(), "Gimbal goal timer callback");
+  if (goal_) {
+    RCLCPP_DEBUG(this->get_logger(), "Gimbal desired orientation is: %f, %f, %f",
+      goal_->vector.x, goal_->vector.y, goal_->vector.z);
+    Eigen::Vector3d desired_orientation_eigen = prepareGimbalMove(
+      goal_, device_id_, lock_yaw_to_vehicle_, yaw_difference_);
+    RCLCPP_DEBUG(this->get_logger(), "Desired orientation: %f, %f, %f",
+      desired_orientation_eigen(0), desired_orientation_eigen(1), desired_orientation_eigen(2));
+    gimbal_interface_->set_gimbal_move(
+      desired_orientation_eigen.y(),
+      desired_orientation_eigen.x(),
+      desired_orientation_eigen.z());
+  }
 }
 
 void GremsyDriver::desiredOrientationCallback(
@@ -264,6 +268,7 @@ void GremsyDriver::declareParameters()
       "lock_yaw_to_vehicle",
       "Uses the yaw relative to the gimbal mount to prevent drift issues. Only a light stabilization is applied.",
       rcl_interfaces::msg::ParameterType::PARAMETER_BOOL));
+
 }
 
 

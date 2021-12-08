@@ -45,7 +45,7 @@ add_executable(gremsy_node src/gremsy_node.cpp)
 ament_target_dependencies(gremsy_node PUBLIC rclcpp rclcpp_components)
 target_link_libraries(gremsy_node PUBLIC gremsy)
 
-install(TARGETS gremsy
+install(TARGETS gremsy gremsy_node
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

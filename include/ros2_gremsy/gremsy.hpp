@@ -89,21 +89,21 @@ private:
     const bool lock_yaw_to_vehicle = false, const double yaw_difference = 0.0)
   {
     Eigen::Vector3d gimbal_move(msg->vector.x, msg->vector.y, msg->vector.z);
-    gimbal_move.x() = RAD_TO_DEG * std::fmin(
+    gimbal_move.x() = std::fmin(
       std::fmax(
-        msg->vector.z + (lock_yaw_to_vehicle ? 0.0 : yaw_difference),
+        RAD_TO_DEG * (msg->vector.z + (lock_yaw_to_vehicle ? 0.0 : yaw_difference)),
         device_specifications_[model].min_roll),
       device_specifications_[model].max_roll);
 
-    gimbal_move.y() = RAD_TO_DEG * std::fmin(
+    gimbal_move.y() = std::fmin(
       std::fmax(
-        msg->vector.y,
+        RAD_TO_DEG * msg->vector.y,
         device_specifications_[model].min_tilt),
       device_specifications_[model].max_tilt);
 
-    gimbal_move.z() = RAD_TO_DEG * std::fmin(
+    gimbal_move.z() = std::fmin(
       std::fmax(
-        msg->vector.x,
+        RAD_TO_DEG * msg->vector.x,
         device_specifications_[model].min_pan),
       device_specifications_[model].max_pan);
 
