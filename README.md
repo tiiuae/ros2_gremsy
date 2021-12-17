@@ -41,6 +41,14 @@ The default com_port parameter is already `/dev/ttyUSB0`. If the device name is 
 ros2 run ros2_gremsy gremsy_node --ros-args -p com_port:=/dev/ttyUSB0
 ```
 
+## Cannot open serial port error
+By default, the ubuntu user does not have access to the serial port. You can add it by 
+```
+sudo usermod -a -G tty ${USER}
+sudo usermod -a -G dialout ${USER}
+```
+Reboot the computer.
+
 
 ## Published Topics
 | Topic name  | Type | Description |
@@ -53,7 +61,7 @@ ros2 run ros2_gremsy gremsy_node --ros-args -p com_port:=/dev/ttyUSB0
 ## Subscribed Topics
 | Topic name  | Type | Description |
 |-----|----|----|
-| ~/gimbal_goal | geometry_msgs/Vector3Stamped | Goal orientation of the gimbal in the global frame in radians. |
+| ~/gimbal_goal | geometry_msgs/Vector3Stamped | Goal orientation of the gimbal in the global frame in radians. X->Roll, Y->Pitch, Z->Yaw |
 
 
 ## Parameters
