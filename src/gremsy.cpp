@@ -15,6 +15,7 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options)
 : Node("ros2_gremsy", options), com_port_("/dev/ttyUSB0"), use_ros_time_(true)
 {
   GremsyDriver(options, "/dev/ttyUSB0");
+  
 }
 
 GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::string & com_port)
@@ -53,7 +54,14 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
     this->create_subscription<geometry_msgs::msg::Vector3Stamped>(
     "~/gimbal_goal", 10,
     std::bind(&GremsyDriver::desiredOrientationCallback, this, std::placeholders::_1));
+    
+  this->target_pose_sub_ =
+    this->create_subscription<geometry_msgs::msg::PoseStamped>(
+    "~/gimbal_goal_pose", 10,
+    std::bind(&GremsyDriver::targetPoseCallback, this, std::placeholders::_1));
 
+  mount_orientation_ = Eigen::Vector3d(0, 0, 0);
+  mount_orientation_absolute_ = Eigen::Vector3d(0, 0, 0);
 
   // Define SDK objects
   serial_port_ = new Serial_Port(com_port_.c_str(), baud_rate_);
@@ -150,6 +158,9 @@ void GremsyDriver::gimbalStateTimerCallback()
           mount_orientation.pitch,
           mount_orientation.yaw_absolute)),
       "gimbal_link", stamp));
+  mount_orientation_absolute_.x() = mount_orientation.roll * DEG_TO_RAD;
+  mount_orientation_absolute_.y() = mount_orientation.pitch * DEG_TO_RAD;
+  mount_orientation_absolute_.z() = mount_orientation.yaw_absolute * DEG_TO_RAD;
 
   // Publish Camera Mount Orientation in local frame (yaw relative to vehicle)
   mount_orientation_local_pub_->publish(
@@ -160,6 +171,9 @@ void GremsyDriver::gimbalStateTimerCallback()
           mount_orientation.pitch,
           mount_orientation.yaw)),
       "gimbal_link", stamp));
+  mount_orientation_.x() = mount_orientation.roll * DEG_TO_RAD;
+  mount_orientation_.y() = mount_orientation.pitch * DEG_TO_RAD;
+  mount_orientation_.z() = mount_orientation.yaw * DEG_TO_RAD;
 }
 
 void GremsyDriver::gimbalGoalTimerCallback()
@@ -168,6 +182,7 @@ void GremsyDriver::gimbalGoalTimerCallback()
   if (goal_) {
     RCLCPP_DEBUG(this->get_logger(), "Gimbal desired orientation is: %f, %f, %f",
       goal_->vector.x, goal_->vector.y, goal_->vector.z);
+
     Eigen::Vector3d desired_orientation_eigen = prepareGimbalMove(
       goal_, device_id_, lock_yaw_to_vehicle_, yaw_difference_);
     RCLCPP_DEBUG(this->get_logger(), "Desired orientation: %f, %f, %f",
@@ -176,6 +191,7 @@ void GremsyDriver::gimbalGoalTimerCallback()
       desired_orientation_eigen.y(),
       desired_orientation_eigen.x(),
       desired_orientation_eigen.z());
+    goal_ = nullptr;
   }
 }
 
@@ -183,6 +199,21 @@ void GremsyDriver::desiredOrientationCallback(
   const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
 {
   goal_ = msg;
+}
+
+void GremsyDriver::targetPoseCallback(
+  const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+{
+  if (strstr(msg->header.frame_id.c_str(), "camera") != NULL) {
+    geometry_msgs::msg::Vector3Stamped relative = relativeToGimbalFromPose(msg, mount_orientation_);
+    RCLCPP_INFO(this->get_logger(), "Msg: %f, %f Rel: %f, %f, %f Mount: %f, %f, %f",
+      msg->pose.position.x, msg->pose.position.y, relative.vector.x, relative.vector.y, relative.vector.z, mount_orientation_.x(), mount_orientation_.y(), mount_orientation_.z());
+    relative.header.frame_id = "gimbal_link";
+    std::shared_ptr<geometry_msgs::msg::Vector3Stamped> relative_ptr =
+      std::make_shared<geometry_msgs::msg::Vector3Stamped>(relative);
+    goal_ = relative_ptr;
+
+  }
 }
 
 void GremsyDriver::declareParameters()

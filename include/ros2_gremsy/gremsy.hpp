@@ -4,6 +4,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/quaternion_stamped.hpp>
 #include <tf2_eigen/tf2_eigen.h>
 
@@ -40,6 +41,12 @@ private:
    * @param msg Vector3Stamped message
    */
   void desiredOrientationCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg);
+
+  /**
+   * @brief Desired mount orientation callback Vector3
+   * @param msg Vector3Stamped message
+   */
+  void targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 
   /// Declare Parameters for the nodes
   void declareParameters();
@@ -135,10 +142,17 @@ private:
   /// Subscriber for desired mount orientation Vector3
   rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr desired_mount_orientation_sub_;
 
+  /// Subscriber for desired mount orientation Vector3
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr target_pose_sub_;
+
   /// Store goals
   geometry_msgs::msg::Vector3Stamped::SharedPtr goal_;
   /// Store yaw difference
   double yaw_difference_ = 0;
+  /// Store mount orientation
+  Eigen::Vector3d mount_orientation_;
+  /// Store absolute mount orientation
+  Eigen::Vector3d mount_orientation_absolute_;
 
   /// Timer for pooling data from gremsy
   rclcpp::TimerBase::SharedPtr pool_timer_;

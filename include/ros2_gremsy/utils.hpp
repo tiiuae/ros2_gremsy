@@ -35,6 +35,7 @@
 #include <tf2_eigen/tf2_eigen.h>
 #include <sensor_msgs/msg/imu.hpp>
 #include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/quaternion_stamped.hpp>
 
 #include <../../gSDK/src/gimbal_interface.h>
@@ -157,6 +158,28 @@ inline geometry_msgs::msg::QuaternionStamped stampQuaternion(
   quat_stamped.header.stamp = time;
   quat_stamped.quaternion = quat;
   return quat_stamped;
+}
+
+inline geometry_msgs::msg::Vector3Stamped relativeToGimbal(
+  const geometry_msgs::msg::Vector3Stamped::SharedPtr & relative_position,
+  const Eigen::Vector3d gimbal_orientation)
+{
+  geometry_msgs::msg::Vector3Stamped relative_position_gimbal;
+  relative_position_gimbal.vector.x = gimbal_orientation.x();
+  relative_position_gimbal.vector.y = gimbal_orientation.y() + relative_position->vector.y;
+  relative_position_gimbal.vector.z = gimbal_orientation.z() - relative_position->vector.z;
+  return relative_position_gimbal;
+}
+
+inline geometry_msgs::msg::Vector3Stamped relativeToGimbalFromPose(
+  const geometry_msgs::msg::PoseStamped::SharedPtr & relative_position,
+  const Eigen::Vector3d gimbal_orientation)
+{
+  geometry_msgs::msg::Vector3Stamped relative_position_gimbal;
+  relative_position_gimbal.vector.x = gimbal_orientation.x();
+  relative_position_gimbal.vector.y = -(- gimbal_orientation.y() + relative_position->pose.position.y*0.5625);
+  relative_position_gimbal.vector.z = - gimbal_orientation.z() - relative_position->pose.position.x;
+  return relative_position_gimbal;
 }
 
 inline double limitAngle(double angle, double min, double max)
