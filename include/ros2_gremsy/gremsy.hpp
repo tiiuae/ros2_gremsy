@@ -41,6 +41,13 @@ private:
    */
   void desiredOrientationCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg);
 
+  /**
+   * @brief Desired mount orientation callback Quaternion
+   * @param msg QuaternionStamped message
+   */
+
+  void desiredOrientationQuaternionCallback(const geometry_msgs::msg::QuaternionStamped::SharedPtr msg);
+
   /// Declare Parameters for the nodes
   void declareParameters();
 
@@ -134,6 +141,9 @@ private:
 
   /// Subscriber for desired mount orientation Vector3
   rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr desired_mount_orientation_sub_;
+
+  /// Subscriber for desired mount orientation Quaternion
+  rclcpp::Subscription<geometry_msgs::msg::QuaternionStamped>::SharedPtr desired_mount_orientation_quaternion_sub_;
 
   /// Store goals
   geometry_msgs::msg::Vector3Stamped::SharedPtr goal_;

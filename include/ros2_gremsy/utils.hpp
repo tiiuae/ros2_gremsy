@@ -130,6 +130,12 @@ inline Eigen::Quaterniond convertYXZtoQuaternion(double roll, double pitch, doub
   return quat_abs;
 }
 
+inline Eigen::Vector3d convertQuaterniontoYXZ(double x, double y, double z, double w)
+{
+  Eigen::Quaterniond q(w, x, y, z);
+  return q.toRotationMatrix().eulerAngles(0, 1, 2);
+}
+
 inline sensor_msgs::msg::Imu convertImuMavlinkMessageToROSMessage(mavlink_raw_imu_t message)
 {
   sensor_msgs::msg::Imu imu_message;
