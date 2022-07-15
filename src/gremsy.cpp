@@ -149,7 +149,7 @@ void GremsyDriver::gimbalStateTimerCallback()
   mount_orientation_global_pub_->publish(
     stampQuaternion(
       tf2::toMsg(
-        convertYXZtoQuaternion(
+        convertXYZtoQuaternion(
           mount_orientation.roll,
           mount_orientation.pitch,
           mount_orientation.yaw_absolute)),
@@ -159,7 +159,7 @@ void GremsyDriver::gimbalStateTimerCallback()
   mount_orientation_local_pub_->publish(
     stampQuaternion(
       tf2::toMsg(
-        convertYXZtoQuaternion(
+        convertXYZtoQuaternion(
           mount_orientation.roll,
           mount_orientation.pitch,
           mount_orientation.yaw)),
@@ -194,16 +194,19 @@ void GremsyDriver::desiredOrientationCallback(
 void GremsyDriver::desiredOrientationQuaternionCallback(
   const geometry_msgs::msg::QuaternionStamped::SharedPtr msg)
 {
-  // Extract roll, pitch, yaw angles
-  Eigen::Vector3d angles = convertQuaterniontoYXZ(msg->quaternion.x, msg->quaternion.y, msg->quaternion.z, msg->quaternion.w);
+  // Extract roll, pitch, yaw angles.
+  // The function returns rotation values that we need to convert into orientations.
+  // The easiest way to fix this is to send the conjugate of the parameter quaternion.
+  Eigen::Vector3d angles = convertQuaterniontoZYX(msg->quaternion.x, msg->quaternion.y, msg->quaternion.z, -msg->quaternion.w);
 
   // goal_ requires a Vector3Stamped, so we convert the message type
   std::shared_ptr<geometry_msgs::msg::Vector3Stamped> message = std::make_shared<geometry_msgs::msg::Vector3Stamped>();
   message->header.stamp = msg->header.stamp;
   message->header.frame_id = msg->header.frame_id;
-  message->vector.x = angles[0];
-  message->vector.y = angles[1];
-  message->vector.z = angles[2];
+  // The conjugate angles have the opposite sign, so we negate them.
+  message->vector.x = -angles[0];
+  message->vector.y = -angles[1];
+  message->vector.z = -angles[2];
 
   RCLCPP_INFO(this->get_logger(), "New quaternion goal received: x: '%.2f', y: '%.2f', z: '%.2f'", message->vector.x, message->vector.y, message->vector.z);
   goal_ = message;

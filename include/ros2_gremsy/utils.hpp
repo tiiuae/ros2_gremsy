@@ -121,19 +121,36 @@ inline control_gimbal_axis_input_mode_t convertIntToAxisInputMode(int mode)
       return CTRL_ANGLE_ABSOLUTE_FRAME;
   }
 }
-inline Eigen::Quaterniond convertYXZtoQuaternion(double roll, double pitch, double yaw)
+inline Eigen::Quaterniond convertXYZtoQuaternion(double roll, double pitch, double yaw)
 {
+  // The yaw angle is negated to match with incoming goals
   Eigen::Quaterniond quat_abs(
-    Eigen::AngleAxisd(-DEG_TO_RAD * pitch, Eigen::Vector3d::UnitY()) *
-    Eigen::AngleAxisd(-DEG_TO_RAD * roll, Eigen::Vector3d::UnitX()) *
-    Eigen::AngleAxisd(DEG_TO_RAD * yaw, Eigen::Vector3d::UnitZ()));
+    Eigen::AngleAxisd(DEG_TO_RAD * roll, Eigen::Vector3d::UnitX()) *
+    Eigen::AngleAxisd(DEG_TO_RAD * pitch, Eigen::Vector3d::UnitY()) *
+    Eigen::AngleAxisd(-DEG_TO_RAD * yaw, Eigen::Vector3d::UnitZ()));
   return quat_abs;
 }
 
-inline Eigen::Vector3d convertQuaterniontoYXZ(double x, double y, double z, double w)
+inline Eigen::Vector3d convertQuaterniontoZYX(double x, double y, double z, double w)
 {
-  Eigen::Quaterniond q(w, x, y, z);
-  return q.toRotationMatrix().eulerAngles(0, 1, 2);
+  Eigen::Vector3d result;
+
+  double sinr_cosp = 2.0 * (w * x + y * z);
+  double cosr_cosp = 1.0 - 2.0 * (x * x + y * y);
+  result[0] = atan2(sinr_cosp, cosr_cosp);
+
+  double sinp = 2.0 * (w * y - z * x);
+  if (abs(sinp) >= 1) {
+    result[1] = copysign(M_PI / 2, sinp);
+  } else {
+    result[1] = asin(sinp);
+  }
+
+  double siny_cosp = 2.0 * (w * z + x * y);
+  double cosy_cosp = 1.0 - 2.0 * (y * y + z * z);
+  result[2] = atan2(siny_cosp, cosy_cosp);
+
+  return result;
 }
 
 inline sensor_msgs::msg::Imu convertImuMavlinkMessageToROSMessage(mavlink_raw_imu_t message)
@@ -177,7 +194,7 @@ inline double limitAngle(double angle, double min, double max)
 
 inline double limitAngle(double angle, double range)
 {
-  limitAngle(angle, -range, range);
+  return limitAngle(angle, -range, range);
 }
 
 
