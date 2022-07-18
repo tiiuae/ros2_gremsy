@@ -54,6 +54,11 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
     "~/gimbal_goal", 10,
     std::bind(&GremsyDriver::desiredOrientationCallback, this, std::placeholders::_1));
 
+  this->desired_mount_orientation_quaternion_sub_ =
+    this->create_subscription<geometry_msgs::msg::QuaternionStamped>(
+    "~/gimbal_goal_quaternion", 10,
+    std::bind(&GremsyDriver::desiredOrientationQuaternionCallback, this, std::placeholders::_1));
+
 
   // Define SDK objects
   serial_port_ = new Serial_Port(com_port_.c_str(), baud_rate_);
@@ -96,7 +101,6 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
     std::chrono::duration<double>(1.0 / goal_push_rate_),
     std::bind(&GremsyDriver::gimbalGoalTimerCallback, this));
 
-
 }
 GremsyDriver::~GremsyDriver()
 {
@@ -105,7 +109,7 @@ GremsyDriver::~GremsyDriver()
 
 void GremsyDriver::gimbalStateTimerCallback()
 {
-  RCLCPP_DEBUG(this->get_logger(), "Gimbal state timer callback");
+  //RCLCPP_DEBUG(this->get_logger(), "Gimbal state timer callback");
   // Publish Gimbal IMU
   mavlink_raw_imu_t imu_mav = gimbal_interface_->get_gimbal_raw_imu();
   imu_mav.time_usec = gimbal_interface_->get_gimbal_time_stamps().raw_imu;
@@ -145,7 +149,7 @@ void GremsyDriver::gimbalStateTimerCallback()
   mount_orientation_global_pub_->publish(
     stampQuaternion(
       tf2::toMsg(
-        convertYXZtoQuaternion(
+        convertXYZtoQuaternion(
           mount_orientation.roll,
           mount_orientation.pitch,
           mount_orientation.yaw_absolute)),
@@ -155,7 +159,7 @@ void GremsyDriver::gimbalStateTimerCallback()
   mount_orientation_local_pub_->publish(
     stampQuaternion(
       tf2::toMsg(
-        convertYXZtoQuaternion(
+        convertXYZtoQuaternion(
           mount_orientation.roll,
           mount_orientation.pitch,
           mount_orientation.yaw)),
@@ -164,7 +168,7 @@ void GremsyDriver::gimbalStateTimerCallback()
 
 void GremsyDriver::gimbalGoalTimerCallback()
 {
-  RCLCPP_DEBUG(this->get_logger(), "Gimbal goal timer callback");
+  // RCLCPP_DEBUG(this->get_logger(), "Gimbal goal timer callback");
   if (goal_) {
     RCLCPP_DEBUG(this->get_logger(), "Gimbal desired orientation is: %f, %f, %f",
       goal_->vector.x, goal_->vector.y, goal_->vector.z);
@@ -176,14 +180,38 @@ void GremsyDriver::gimbalGoalTimerCallback()
       desired_orientation_eigen.y(),
       desired_orientation_eigen.x(),
       desired_orientation_eigen.z());
+    goal_ = nullptr;
   }
 }
 
 void GremsyDriver::desiredOrientationCallback(
   const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
 {
+  RCLCPP_INFO(this->get_logger(), "New goal received: x: '%.2f', y: '%.2f', z: '%.2f'", msg->vector.x, msg->vector.y, msg->vector.z);
   goal_ = msg;
 }
+
+void GremsyDriver::desiredOrientationQuaternionCallback(
+  const geometry_msgs::msg::QuaternionStamped::SharedPtr msg)
+{
+  // Extract roll, pitch, yaw angles.
+  // The function returns rotation values that we need to convert into orientations.
+  // The easiest way to fix this is to send the conjugate of the parameter quaternion.
+  Eigen::Vector3d angles = convertQuaterniontoZYX(msg->quaternion.x, msg->quaternion.y, msg->quaternion.z, -msg->quaternion.w);
+
+  // goal_ requires a Vector3Stamped, so we convert the message type
+  std::shared_ptr<geometry_msgs::msg::Vector3Stamped> message = std::make_shared<geometry_msgs::msg::Vector3Stamped>();
+  message->header.stamp = msg->header.stamp;
+  message->header.frame_id = msg->header.frame_id;
+  // The conjugate angles have the opposite sign, so we negate them.
+  message->vector.x = -angles[0];
+  message->vector.y = -angles[1];
+  message->vector.z = -angles[2];
+
+  RCLCPP_INFO(this->get_logger(), "New quaternion goal received: x: '%.2f', y: '%.2f', z: '%.2f'", message->vector.x, message->vector.y, message->vector.z);
+  goal_ = message;
+}
+
 
 void GremsyDriver::declareParameters()
 {
