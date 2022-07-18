@@ -62,6 +62,7 @@ Reboot the computer.
 | Topic name  | Type | Description |
 |-----|----|----|
 | ~/gimbal_goal | geometry_msgs/Vector3Stamped | Goal orientation of the gimbal in the global frame in radians. X->Roll, Y->Pitch, Z->Yaw |
+| ~/gimbal_goal_quaternion | geometry_msgs/QuaternionStamped | Goal orientation of the gimbal in the local frame as quaternion. |
 
 
 ## Parameters
@@ -88,7 +89,7 @@ Note: Only Gimbal Pixy and T3V3 support CTRL_ANGLE_BODY_FRAME mode with pitch an
 - Create a launch file and parameters file for the package.
 - Verify other models working with this package
 - Add TF publishing 
-- Add other topics for controlling gimbal, for instance Quaternion.
+- Add other topics for controlling gimbal.
 
 # References
 [gSDK](https://github.com/Gremsy/gSDK) 
