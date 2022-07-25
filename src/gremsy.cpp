@@ -11,6 +11,7 @@ namespace ros2_gremsy
 {
 using namespace std::chrono_literals;
 using std::placeholders::_1;
+using std::placeholders::_2;
 GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options)
 : Node("ros2_gremsy", options), com_port_("/dev/ttyUSB0"), use_ros_time_(true)
 {
@@ -59,10 +60,10 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
     "~/gimbal_goal_quaternion", 10,
     std::bind(&GremsyDriver::desiredOrientationQuaternionCallback, this, std::placeholders::_1));
 
-  this->desired_gimbal_mode_sub_ =
-    this->create_subscription<std_msgs::msg::UInt16>(
-    "~/gimbal_mode", 10,
-    std::bind(&GremsyDriver::desiredGimbalModeCallback, this, std::placeholders::_1));
+  // Create services
+  this->enable_lock_mode_service_ =
+    this->create_service<std_srvs::srv::SetBool>("~/lock_mode",
+    std::bind(&GremsyDriver::enableLockModeCallback, this, std::placeholders::_1, std::placeholders::_2));
 
   // Define SDK objects
   serial_port_ = new Serial_Port(com_port_.c_str(), baud_rate_);
@@ -216,22 +217,25 @@ void GremsyDriver::desiredOrientationQuaternionCallback(
   goal_ = message;
 }
 
-void GremsyDriver::desiredGimbalModeCallback(
-  const std_msgs::msg::UInt16::SharedPtr msg)
-{
-  // Check the parameter is within a valid range.
-  if (msg->data > 2) {
-    RCLCPP_ERROR(this->get_logger(), "Desired gimbal mode callback discarded an invalid input: %d. Value has to be 0, 1, or 2.", msg->data);
-    return;
-  }
-  // Ignore message if the new mode is already active.
-  if (gimbal_mode_ != msg->data) {
-    gimbal_mode_ = msg->data;
-    // Also set the ros2 parameter to proper value, just in case someone checks it.
+void GremsyDriver::enableLockModeCallback(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+                                          const std::shared_ptr<std_srvs::srv::SetBool::Response> response){
+  int new_mode = request->data ? 1 : 2;
+  // If requested mode is already active
+  if (new_mode == gimbal_mode_){
+    response->success = false;
+    response->message = "Gimbal is already in requested mode.";
+    RCLCPP_ERROR(this->get_logger(), "Gimbal mode unchanged, is already in %s mode.", gimbal_mode_ == 1 ? "lock" : "follow");
+  } else {
+    // Set new mode internally and to parameters.
+    gimbal_mode_ = new_mode;
     this->set_parameter(rclcpp::Parameter("gimbal_mode", gimbal_mode_));
     gimbal_interface_->set_gimbal_mode(convertIntGimbalMode(gimbal_mode_));
-    RCLCPP_INFO(this->get_logger(), "Changing gimbal mode to %s.", gimbal_mode_ == 0 ? "off": gimbal_mode_ == 1 ? "lock" : "follow");
-  }
+
+    response->success = true;
+    response->message = "Gimbal mode successfully changed.";
+
+    RCLCPP_INFO(this->get_logger(), "Changing gimbal mode to %s.", gimbal_mode_ == 1 ? "lock" : "follow");
+    }
 }
 
 void GremsyDriver::declareParameters()
