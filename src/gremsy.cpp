@@ -222,9 +222,9 @@ void GremsyDriver::enableLockModeCallback(const std::shared_ptr<std_srvs::srv::S
   int new_mode = request->data ? 1 : 2;
   // If requested mode is already active
   if (new_mode == gimbal_mode_){
-    response->success = false;
+    response->success = true;
     response->message = "Gimbal is already in requested mode.";
-    RCLCPP_ERROR(this->get_logger(), "Gimbal mode unchanged, is already in %s mode.", gimbal_mode_ == 1 ? "lock" : "follow");
+    RCLCPP_WARN(this->get_logger(), "Gimbal mode unchanged, is already in %s mode.", gimbal_mode_ == 1 ? "lock" : "follow");
   } else {
     // Set new mode internally and to parameters.
     gimbal_mode_ = new_mode;
