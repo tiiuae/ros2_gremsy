@@ -64,6 +64,10 @@ Reboot the computer.
 | ~/gimbal_goal | geometry_msgs/Vector3Stamped | Goal orientation of the gimbal in the global frame in radians. X->Roll, Y->Pitch, Z->Yaw |
 | ~/gimbal_goal_quaternion | geometry_msgs/QuaternionStamped | Goal orientation of the gimbal in the local frame as quaternion. |
 
+## Services
+| Service name | Service type     | Input type | Output types                 | Description                                                  |
+|--------------|------------------|------------|------------------------------|--------------------------------------------------------------|
+| ~/lock_mode  | std_srvs/SetBool | bool data  | bool success, string message | Change gimbal mode: lock mode (true) and follow mode (false) |
 
 ## Parameters
 

@@ -5,6 +5,7 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <geometry_msgs/msg/quaternion_stamped.hpp>
+#include <std_srvs/srv/set_bool.hpp>
 #include <tf2_eigen/tf2_eigen.h>
 
 #include "ros2_gremsy/utils.hpp"
@@ -45,8 +46,17 @@ private:
    * @brief Desired mount orientation callback Quaternion
    * @param msg QuaternionStamped message
    */
-
   void desiredOrientationQuaternionCallback(const geometry_msgs::msg::QuaternionStamped::SharedPtr msg);
+
+  /**
+   * @brief Enable lock mode callback
+   * @param request SetBool request. Only field is bool data. true
+   * @param response SetBool response. Has fields bool success and string message.
+   * This callback will change the gimbal mode unless the new mode is already active.
+   * response->success is false if new mode is already active, true otherwise.
+   */
+  void enableLockModeCallback(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+                              const std::shared_ptr<std_srvs::srv::SetBool::Response> response);
 
   /// Declare Parameters for the nodes
   void declareParameters();
@@ -144,6 +154,9 @@ private:
 
   /// Subscriber for desired mount orientation Quaternion
   rclcpp::Subscription<geometry_msgs::msg::QuaternionStamped>::SharedPtr desired_mount_orientation_quaternion_sub_;
+
+  /// Service for gimbal mode change
+  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr enable_lock_mode_service_;
 
   /// Store goals
   geometry_msgs::msg::Vector3Stamped::SharedPtr goal_;
