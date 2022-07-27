@@ -41,6 +41,13 @@ The default com_port parameter is already `/dev/ttyUSB0`. If the device name is 
 ros2 run ros2_gremsy gremsy_node --ros-args -p com_port:=/dev/ttyUSB0
 ```
 
+## Run with docker image
+The default com_port parameter is already `/dev/ttyUSB0`. If the device name is different, you should use the correct one to mount the device. For example, `--device /dev/ttyUSB1:/dev/ttyUSB0`, so host `ttyUSB1` is mounted to container as `ttyUSB0`.
+
+```
+docker run --rm -ti --env DRONE_DEVICE_ID=sad99 --network host --device /dev/ttyUSB0:/dev/ttyUSB0 ghcr.io/tiiuae/tii-gremsy:main
+```
+
 ## Cannot open serial port error
 By default, the ubuntu user does not have access to the serial port. You can add it by 
 ```
