@@ -25,6 +25,8 @@ git checkout gSDK_V3_alpha
 popd
 ```
 
+Use gTune (Version `1.4.8` or newer) to update the gimbal firmware to the newest version. (MIO works with version `7.7.2` or newer. Recalibrate the gyro after update.)
+
 Install dependencies using rosdep from the workspace directory, modify ${ROS_DISTRO} if you have in your environment.
 
 ```
