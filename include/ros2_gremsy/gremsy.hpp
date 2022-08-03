@@ -73,6 +73,11 @@ private:
    */
   void gimbalGoalTimerCallback();
 
+  /**
+   * @brief Set message rates for polled gimbal status
+   */
+  void set_msg_rates();
+
 
   /// Struct for device specific limits
   struct

@@ -29,12 +29,6 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
   state_poll_rate_ = this->get_parameter("state_poll_rate").as_double();
   goal_push_rate_ = this->get_parameter("goal_push_rate").as_double();
   gimbal_mode_ = this->get_parameter("gimbal_mode").as_int();
-  tilt_axis_input_mode_ = this->get_parameter("tilt_axis_input_mode").as_int();
-  tilt_axis_stabilize_ = this->get_parameter("tilt_axis_stabilize").as_bool();
-  roll_axis_input_mode_ = this->get_parameter("roll_axis_input_mode").as_int();
-  roll_axis_stabilize_ = this->get_parameter("roll_axis_stabilize").as_bool();
-  pan_axis_input_mode_ = this->get_parameter("pan_axis_input_mode").as_int();
-  pan_axis_stabilize_ = this->get_parameter("pan_axis_stabilize").as_bool();
   lock_yaw_to_vehicle_ = this->get_parameter("lock_yaw_to_vehicle").as_bool();
 
   // Initialize publishers
@@ -73,30 +67,30 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
   serial_port_->start();
   gimbal_interface_->start();
 
-  if (gimbal_interface_->get_gimbal_status().mode == GIMBAL_STATE_OFF) {
+  if (gimbal_interface_->get_gimbal_status().state == Gimbal_Interface::GIMBAL_STATE_OFF) {
     RCLCPP_INFO(this->get_logger(), "Gimbal is off, turning it on");
-    gimbal_interface_->set_gimbal_motor_mode(TURN_ON);
+    gimbal_interface_->set_gimbal_motor(Gimbal_Interface::TURN_ON);
   }
-  while (gimbal_interface_->get_gimbal_status().mode < GIMBAL_STATE_ON) {
+  while (gimbal_interface_->get_gimbal_status().state < Gimbal_Interface::GIMBAL_STATE_ON) {
     RCLCPP_INFO(this->get_logger(), "Waiting for gimbal to turn on");
     std::this_thread::sleep_for(100ms);
   }
 
   // Set gimbal control modes
+  if (gimbal_mode_ == 1) {
+    gimbal_interface_->set_gimbal_lock_mode_sync();
+  } else {
+    gimbal_interface_->set_gimbal_follow_mode_sync();
+  }
 
-  gimbal_interface_->set_gimbal_mode(convertIntGimbalMode(gimbal_mode_));
-
-  // Set modes for each axis
-
-  control_gimbal_axis_mode_t tilt_axis_mode, roll_axis_mode, pan_axis_mode;
-  tilt_axis_mode.input_mode = convertIntToAxisInputMode(tilt_axis_input_mode_);
-  tilt_axis_mode.stabilize = tilt_axis_stabilize_;
-  roll_axis_mode.input_mode = convertIntToAxisInputMode(roll_axis_input_mode_);
-  roll_axis_mode.stabilize = roll_axis_stabilize_;
-  pan_axis_mode.input_mode = convertIntToAxisInputMode(pan_axis_input_mode_);
-  pan_axis_mode.stabilize = pan_axis_stabilize_;
-
-  gimbal_interface_->set_gimbal_axes_mode(tilt_axis_mode, roll_axis_mode, pan_axis_mode);
+  // Send initial goal to the starting orientation
+  std::shared_ptr<geometry_msgs::msg::Vector3Stamped> message = std::make_shared<geometry_msgs::msg::Vector3Stamped>();
+  message->header.stamp = rclcpp::Time(0);
+  message->header.frame_id = "";
+  message->vector.x = 0;
+  message->vector.y = 0;
+  message->vector.z = 0;
+  goal_ = message;
 
   pool_timer_ = this->create_wall_timer(
     std::chrono::duration<double>(1.0 / state_poll_rate_),
@@ -112,21 +106,32 @@ GremsyDriver::~GremsyDriver()
   // TODO: Close serial port
 }
 
+void GremsyDriver::set_msg_rates(){
+  // Poll status with a higher frequency to ensure proper values for each published message
+  uint8_t status_rate = (uint8_t)state_poll_rate_ * 2 + 10;
+  gimbal_interface_->set_msg_encoder_rate(status_rate);
+  gimbal_interface_->set_msg_mnt_orient_rate(status_rate);
+  gimbal_interface_->set_msg_attitude_status_rate(status_rate);
+  gimbal_interface_->set_msg_raw_imu_rate(status_rate);
+  // Set encoder to send values as angles, not raw
+  gimbal_interface_->set_gimbal_encoder_type_send(false);
+}
+
 void GremsyDriver::gimbalStateTimerCallback()
 {
   //RCLCPP_DEBUG(this->get_logger(), "Gimbal state timer callback");
   // Publish Gimbal IMU
-  mavlink_raw_imu_t imu_mav = gimbal_interface_->get_gimbal_raw_imu();
-  imu_mav.time_usec = gimbal_interface_->get_gimbal_time_stamps().raw_imu;
-  sensor_msgs::msg::Imu imu_ros_mag = convertImuMavlinkMessageToROSMessage(imu_mav);
+  Gimbal_Interface::imu_t imu_mav = gimbal_interface_->get_gimbal_raw_imu();
+
+  sensor_msgs::msg::Imu imu_ros_mag = convertImuToROSMessage(imu_mav);
 
   imu_ros_mag.header.stamp = use_ros_time_ ? this->get_clock()->now() : rclcpp::Time(
-    (int64_t)imu_mav.time_usec * 1000UL);
+    (int64_t)gimbal_interface_->get_gimbal_timestamps().raw_imu * 1000UL);
   imu_pub_->publish(imu_ros_mag);
 
   // Publish Gimbal Encoder Values
-  mavlink_mount_status_t mount_status = gimbal_interface_->get_gimbal_mount_status();
-  uint64_t mnt_status_time_stamp = gimbal_interface_->get_gimbal_time_stamps().mount_status;
+  attitude<int16_t> mount_status = gimbal_interface_->get_gimbal_encoder();
+  uint64_t mnt_status_time_stamp = gimbal_interface_->get_gimbal_timestamps().mount_status;
   // TODO: Confirm that the mount status timestamp is in microseconds
 
   geometry_msgs::msg::Vector3Stamped encoder_ros_msg;
@@ -134,21 +139,22 @@ void GremsyDriver::gimbalStateTimerCallback()
   encoder_ros_msg.header.stamp = use_ros_time_ ? this->get_clock()->now() : rclcpp::Time(
     (int64_t)mnt_status_time_stamp * 1000UL);
 
-  encoder_ros_msg.vector.x = ((float) mount_status.pointing_b) * DEG_TO_RAD;
-  encoder_ros_msg.vector.y = ((float) mount_status.pointing_a) * DEG_TO_RAD;
-  encoder_ros_msg.vector.z = ((float) mount_status.pointing_c) * DEG_TO_RAD;
+  encoder_ros_msg.vector.x = ((float) mount_status.roll) * DEG_TO_RAD;
+  encoder_ros_msg.vector.y = ((float) mount_status.pitch) * DEG_TO_RAD;
+  encoder_ros_msg.vector.z = ((float) mount_status.yaw) * DEG_TO_RAD;
   // encoder_ros_msg.header TODO time stamps
 
   encoder_pub_->publish(encoder_ros_msg);
 
-  // Get Mount Orientation
-  mavlink_mount_orientation_t mount_orientation = gimbal_interface_->get_gimbal_mount_orientation();
-  mount_orientation.time_boot_ms = gimbal_interface_->get_gimbal_time_stamps().mount_orientation;
+  // Get Gimbal Attitude
+  attitude<float> mount_orientation = gimbal_interface_->get_gimbal_attitude();
+  uint64_t gimbal_attitude_time_stamp = gimbal_interface_->get_gimbal_timestamps().attitude_status;
 
   rclcpp::Time stamp = use_ros_time_ ? this->get_clock()->now() : rclcpp::Time(
-    (int64_t)mount_orientation.time_boot_ms * 1000000UL);
+    (int64_t)gimbal_attitude_time_stamp * 1000UL);
 
-  yaw_difference_ = DEG_TO_RAD * (mount_orientation.yaw_absolute - mount_orientation.yaw);
+  // TODO: Publish global orientation. New SDK doesn't offer this by default.
+  /*yaw_difference_ = DEG_TO_RAD * (mount_orientation.yaw_absolute - mount_orientation.yaw);
 
   // Publish Camera Mount Orientation in global frame (drifting)
   mount_orientation_global_pub_->publish(
@@ -159,7 +165,7 @@ void GremsyDriver::gimbalStateTimerCallback()
           mount_orientation.pitch,
           mount_orientation.yaw_absolute)),
       "gimbal_link", stamp));
-
+  */
   // Publish Camera Mount Orientation in local frame (yaw relative to vehicle)
   mount_orientation_local_pub_->publish(
     stampQuaternion(
@@ -174,6 +180,7 @@ void GremsyDriver::gimbalStateTimerCallback()
 void GremsyDriver::gimbalGoalTimerCallback()
 {
   // RCLCPP_DEBUG(this->get_logger(), "Gimbal goal timer callback");
+  static bool once = true;
   if (goal_) {
     RCLCPP_DEBUG(this->get_logger(), "Gimbal desired orientation is: %f, %f, %f",
       goal_->vector.x, goal_->vector.y, goal_->vector.z);
@@ -181,11 +188,18 @@ void GremsyDriver::gimbalGoalTimerCallback()
       goal_, device_id_, lock_yaw_to_vehicle_, yaw_difference_);
     RCLCPP_DEBUG(this->get_logger(), "Desired orientation: %f, %f, %f",
       desired_orientation_eigen(0), desired_orientation_eigen(1), desired_orientation_eigen(2));
-    gimbal_interface_->set_gimbal_move(
+    Gimbal_Protocol::result_t result = gimbal_interface_->set_gimbal_rotation_sync(
       desired_orientation_eigen.y(),
       desired_orientation_eigen.x(),
       desired_orientation_eigen.z());
     goal_ = nullptr;
+    if (once){
+      // For some reason, polling rates change weirdly after the first goal has been given to gimbal.
+      // As a workaround, we set the rates after the initial goal is set.
+      printf("Reseting rates \n");
+      set_msg_rates();
+      once = false;
+    }
   }
 }
 
@@ -229,7 +243,11 @@ void GremsyDriver::enableLockModeCallback(const std::shared_ptr<std_srvs::srv::S
     // Set new mode internally and to parameters.
     gimbal_mode_ = new_mode;
     this->set_parameter(rclcpp::Parameter("gimbal_mode", gimbal_mode_));
-    gimbal_interface_->set_gimbal_mode(convertIntGimbalMode(gimbal_mode_));
+    if (gimbal_mode_ == 1) {
+      gimbal_interface_->set_gimbal_lock_mode_sync();
+    } else {
+      gimbal_interface_->set_gimbal_follow_mode_sync();
+    }
 
     response->success = true;
     response->message = "Gimbal mode successfully changed.";
@@ -259,7 +277,7 @@ void GremsyDriver::declareParameters()
       rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER));
 
   this->declare_parameter(
-    "state_poll_rate", 50.0,
+    "state_poll_rate", 10.0,
     getParamDescriptor(
       "state_poll_rate", "Rate in which the gimbal data is polled and published",
       rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE, 0.0, 300.0, 1.0));
@@ -271,49 +289,10 @@ void GremsyDriver::declareParameters()
       rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE, 0.0, 300.0, 1.0));
 
   this->declare_parameter(
-    "gimbal_mode", 1,
+    "gimbal_mode", 2,
     getParamDescriptor(
       "gimbal_mode", "Control mode of the gimbal",
       rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
-
-  this->declare_parameter(
-    "tilt_axis_input_mode", 2,
-    getParamDescriptor(
-      "tilt_axis_input_mode",
-      "Input mode of the gimbals tilt axis, 0: angle body, 1: ground angular rate, 2: ground absolute angle",
-      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
-
-  this->declare_parameter(
-    "tilt_axis_stabilize", true,
-    getParamDescriptor(
-      "tilt_axis_stabilize", "Input mode of the gimbals tilt axis",
-      rcl_interfaces::msg::ParameterType::PARAMETER_BOOL));
-
-  this->declare_parameter(
-    "roll_axis_input_mode", 2,
-    getParamDescriptor(
-      "roll_axis_input_mode",
-      "Input mode of the gimbals tilt roll, 0: angle body, 1: ground angular rate, 2: ground absolute angle",
-      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
-
-  this->declare_parameter(
-    "roll_axis_stabilize", true,
-    getParamDescriptor(
-      "roll_axis_stabilize", "Input mode of the gimbals tilt roll",
-      rcl_interfaces::msg::ParameterType::PARAMETER_BOOL));
-
-  this->declare_parameter(
-    "pan_axis_input_mode", 2,
-    getParamDescriptor(
-      "pan_axis_input_mode",
-      "Input mode of the gimbals tilt pan, 0: angle body, 1: ground angular rate, 2: ground absolute angle",
-      rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER, 0, 2));
-
-  this->declare_parameter(
-    "pan_axis_stabilize", true,
-    getParamDescriptor(
-      "pan_axis_stabilize", "Input mode of the gimbals tilt pan",
-      rcl_interfaces::msg::ParameterType::PARAMETER_BOOL));
 
   this->declare_parameter(
     "lock_yaw_to_vehicle", true,

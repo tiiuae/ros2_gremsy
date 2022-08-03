@@ -26,7 +26,8 @@ include_directories(
         gSDK/src/
 )
 
-set(SOURCES src/gremsy.cpp gSDK/src/serial_port.cpp gSDK/src/gimbal_interface.cpp)
+set(SOURCES src/gremsy.cpp gSDK/src/serial_port.cpp gSDK/src/gimbal_interface.cpp gSDK/src/gimbal_protocol.cpp
+    gSDK/src/gimbal_protocol_v1.cpp gSDK/src/gimbal_protocol_v2.cpp)
 
 
 # uncomment the following section in order to fill in
