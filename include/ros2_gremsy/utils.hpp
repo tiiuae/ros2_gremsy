@@ -101,7 +101,6 @@ inline rcl_interfaces::msg::ParameterDescriptor getParamDescriptor(
 
 inline Eigen::Quaterniond convertXYZtoQuaternion(double roll, double pitch, double yaw)
 {
-  // The yaw angle is negated to match with incoming goals
   Eigen::Quaterniond quat_abs(
     Eigen::AngleAxisd(DEG_TO_RAD * roll, Eigen::Vector3d::UnitX()) *
     Eigen::AngleAxisd(DEG_TO_RAD * pitch, Eigen::Vector3d::UnitY()) *
