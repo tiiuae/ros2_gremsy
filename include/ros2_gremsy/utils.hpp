@@ -99,35 +99,13 @@ inline rcl_interfaces::msg::ParameterDescriptor getParamDescriptor(
   return descriptor;
 }
 
-inline control_gimbal_mode_t convertIntGimbalMode(int mode)
-{   // Allows int access to the control_gimbal_mode_t struct
-  switch (mode) {
-    case 0: return GIMBAL_OFF;
-    case 1: return LOCK_MODE;
-    case 2: return FOLLOW_MODE;
-    default:
-      return GIMBAL_OFF;
-  }
-}
-
-
-inline control_gimbal_axis_input_mode_t convertIntToAxisInputMode(int mode)
-{   // Allows int access to the control_gimbal_axis_input_mode_t struct
-  switch (mode) {
-    case 0: return CTRL_ANGLE_BODY_FRAME;
-    case 1: return CTRL_ANGULAR_RATE;
-    case 2: return CTRL_ANGLE_ABSOLUTE_FRAME;
-    default:
-      return CTRL_ANGLE_ABSOLUTE_FRAME;
-  }
-}
 inline Eigen::Quaterniond convertXYZtoQuaternion(double roll, double pitch, double yaw)
 {
   // The yaw angle is negated to match with incoming goals
   Eigen::Quaterniond quat_abs(
     Eigen::AngleAxisd(DEG_TO_RAD * roll, Eigen::Vector3d::UnitX()) *
     Eigen::AngleAxisd(DEG_TO_RAD * pitch, Eigen::Vector3d::UnitY()) *
-    Eigen::AngleAxisd(-DEG_TO_RAD * yaw, Eigen::Vector3d::UnitZ()));
+    Eigen::AngleAxisd(DEG_TO_RAD * yaw, Eigen::Vector3d::UnitZ()));
   return quat_abs;
 }
 
@@ -166,6 +144,23 @@ inline sensor_msgs::msg::Imu convertImuMavlinkMessageToROSMessage(mavlink_raw_im
   imu_message.angular_velocity.x = message.xgyro;
   imu_message.angular_velocity.y = message.ygyro;
   imu_message.angular_velocity.z = message.zgyro;
+
+  return imu_message;
+}
+
+inline sensor_msgs::msg::Imu convertImuToROSMessage(Gimbal_Interface::imu_t message)
+{
+  sensor_msgs::msg::Imu imu_message;
+
+  // Set acceleration data
+  imu_message.linear_acceleration.x = message.accel.x;
+  imu_message.linear_acceleration.y = message.accel.y;
+  imu_message.linear_acceleration.z = message.accel.z;
+
+  // Set gyro data
+  imu_message.angular_velocity.x = message.gyro.x;
+  imu_message.angular_velocity.y = message.gyro.y;
+  imu_message.angular_velocity.z = message.gyro.z;
 
   return imu_message;
 }
