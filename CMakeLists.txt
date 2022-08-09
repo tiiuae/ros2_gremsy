@@ -27,7 +27,7 @@ include_directories(
 )
 
 set(SOURCES src/gremsy.cpp gSDK/src/serial_port.cpp gSDK/src/gimbal_interface.cpp gSDK/src/gimbal_protocol.cpp
-    gSDK/src/gimbal_protocol_v1.cpp gSDK/src/gimbal_protocol_v2.cpp)
+    gSDK/src/gimbal_protocol_v1.cpp gSDK/src/gimbal_protocol_v2.cpp src/gimbal_tf_broadcaster.cpp)
 
 
 # uncomment the following section in order to fill in
@@ -49,6 +49,15 @@ ament_target_dependencies(gremsy_node PUBLIC rclcpp rclcpp_components)
 target_link_libraries(gremsy_node PUBLIC gremsy)
 
 install(TARGETS gremsy gremsy_node
+  DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME})
+
+add_executable(gimbal_tf_broadcaster src/gimbal_tf_broadcaster.cpp)
+ament_target_dependencies(gimbal_tf_broadcaster rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
+
+install(TARGETS gimbal_tf_broadcaster
   DESTINATION lib/${PROJECT_NAME})
 
 # Disabling build testing for now, to save time on the builds

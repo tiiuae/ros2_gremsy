@@ -196,7 +196,6 @@ void GremsyDriver::gimbalGoalTimerCallback()
     if (once){
       // For some reason, polling rates change weirdly after the first goal has been given to gimbal.
       // As a workaround, we set the rates after the initial goal is set.
-      printf("Reseting rates \n");
       set_msg_rates();
       once = false;
     }
