@@ -13,7 +13,7 @@ RUN /packaging/build.sh
 
 FROM ghcr.io/tiiuae/fog-ros-baseimage:stable
 
-ENTRYPOINT exec ros-with-env ros2 run ros2_gremsy gremsy_node --ros-args --remap __ns:=/$DRONE_DEVICE_ID -p com_port:=/dev/ttyUSB0
+ENTRYPOINT exec ros-with-env ros2 launch ros2_gremsy ros_gremsy_gimbal.launch.py
 
 COPY --from=builder /main_ws/ros-*-ros2-gremsy_*_amd64.deb /ros2_gremsy.deb
 
