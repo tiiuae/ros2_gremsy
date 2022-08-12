@@ -32,26 +32,26 @@ GremsyDriver::GremsyDriver(const rclcpp::NodeOptions & options, const std::strin
   lock_yaw_to_vehicle_ = this->get_parameter("lock_yaw_to_vehicle").as_bool();
 
   // Initialize publishers
-  this->imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("~/imu", 10);
-  this->encoder_pub_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/encoder", 10);
+  this->imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("~/imu", rclcpp::SystemDefaultsQoS());
+  this->encoder_pub_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/encoder", rclcpp::SystemDefaultsQoS());
   this->mount_orientation_global_pub_ =
     this->create_publisher<geometry_msgs::msg::QuaternionStamped>(
     "~/mount_orientation_global",
-    10);
+    rclcpp::SystemDefaultsQoS());
   this->mount_orientation_local_pub_ =
     this->create_publisher<geometry_msgs::msg::QuaternionStamped>(
     "~/mount_orientation_local",
-    10);
+    rclcpp::SystemDefaultsQoS());
 
   // Initialize subscribers
   this->desired_mount_orientation_sub_ =
     this->create_subscription<geometry_msgs::msg::Vector3Stamped>(
-    "~/gimbal_goal", 10,
+    "~/gimbal_goal", rclcpp::SystemDefaultsQoS(),
     std::bind(&GremsyDriver::desiredOrientationCallback, this, std::placeholders::_1));
 
   this->desired_mount_orientation_quaternion_sub_ =
     this->create_subscription<geometry_msgs::msg::QuaternionStamped>(
-    "~/gimbal_goal_quaternion", 10,
+    "~/gimbal_goal_quaternion", rclcpp::SystemDefaultsQoS(),
     std::bind(&GremsyDriver::desiredOrientationQuaternionCallback, this, std::placeholders::_1));
 
   // Create services
@@ -252,7 +252,7 @@ void GremsyDriver::enableLockModeCallback(const std::shared_ptr<std_srvs::srv::S
     response->message = "Gimbal mode successfully changed.";
 
     RCLCPP_INFO(this->get_logger(), "Changing gimbal mode to %s.", gimbal_mode_ == 1 ? "lock" : "follow");
-    }
+  }
 }
 
 void GremsyDriver::declareParameters()
