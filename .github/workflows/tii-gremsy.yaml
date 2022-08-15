@@ -1,9 +1,11 @@
-name: Build
+name: tii-gremsy
 
 on:
   repository_dispatch:
     types: [fog-ros-baseimage-update]
   push:
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   build:
