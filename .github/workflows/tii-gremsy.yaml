@@ -1,4 +1,4 @@
-name: Build
+name: tii-gremsy
 
 on:
   push:
