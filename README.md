@@ -43,16 +43,22 @@ Check the device name of the gimbal by running the following command.
 dmesg | grep tty
 ```
 
-The default com_port parameter is already `/dev/ttyUSB0`. If the device name is different, you should add it to run command. The launch file is not created yet, so you should manually enter it to the command.
+Run the node with 
 ```
-ros2 run ros2_gremsy gremsy_node --ros-args -p com_port:=/dev/ttyUSB0
+ros2 launch ros2_gremsy ros_gremsy_gimbal.launch.py 
+```
+
+
+The default com_port parameter is already `/dev/ttyUSB0`. If the device name is different, you should add it to launch command. 
+```
+ros2 launch ros2_gremsy ros_gremsy_gimbal.launch.py serial_port:='<device_name>'
 ```
 
 ## Run with docker image
-The default com_port parameter is already `/dev/ttyUSB0`. If the device name is different, you should use the correct one to mount the device. For example, `--device /dev/ttyUSB1:/dev/ttyUSB0`, so host `ttyUSB1` is mounted to container as `ttyUSB0`.
+You can run the docker image with the following command. The docker image needs an explicit value for com_port, which has to be passed both as an env parameter as well as the device. 
 
 ```
-docker run --rm -ti --env DRONE_DEVICE_ID=sad99 --network host --device /dev/ttyUSB0:/dev/ttyUSB0 ghcr.io/tiiuae/tii-gremsy:main
+docker run --rm -e DRONE_DEVICE_ID=sad99 -e GIMBAL_SERIAL_PORT=/dev/ttyUSB0 --network host --device /dev/ttyUSB0 -ti ghcr.io/tiiuae/tii-gremsy:sha-248dd3e
 ```
 
 ## Cannot open serial port error
