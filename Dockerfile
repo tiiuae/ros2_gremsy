@@ -17,7 +17,6 @@ RUN /packaging/build_colcon_sdk.sh ${TARGETARCH:-amd64}
 
 FROM ghcr.io/tiiuae/fog-ros-baseimage:v3.1.0
 
-# ENTRYPOINT exec ros-with-env ros2 run ros2_gremsy gremsy_node --ros-args --remap __ns:=/$DRONE_DEVICE_ID -p com_port:=/dev/ttyUSB0
 ENTRYPOINT [ "/entrypoint.sh" ]
 
 COPY entrypoint.sh /entrypoint.sh
