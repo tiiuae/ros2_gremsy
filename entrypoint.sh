@@ -1,22 +1,22 @@
 #!/bin/bash -e
 _term() {
-	# FILL UP PROCESS SEARCH PATTERN HERE TO FIND PROPER PROCESS FOR SIGINT:
-	pattern="component_container_mt"
+    # FILL UP PROCESS SEARCH PATTERN HERE TO FIND PROPER PROCESS FOR SIGINT:
+    pattern="ros2_gremsy/gremsy_node"
 
-	pid_value="$(ps -e | grep $pattern | grep -v grep | awk '{ print $1 }')"
-	if [ "$pid_value" != "" ]; then
-		pid=$pid_value
-		echo "Send SIGINT to pid $pid"
-	else
-		pid=1
-		echo "Pattern not found, send SIGINT to pid $pid"
-	fi
-	kill -s SIGINT $pid
+    pid_value="$(ps -ax | grep $pattern | grep -v grep | awk '{ print $1 }')"
+    if [ "$pid_value" != "" ]; then
+        pid=$pid_value
+        echo "Send SIGINT to pid $pid"
+    else
+        pid=1
+        echo "Pattern not found, send SIGINT to pid $pid"
+    fi
+    kill -s SIGINT $pid
 }
 # Use SIGTERM or TERM, does not seem to make any difference.
-trap _term TERM
+trap _term SIGTERM
 
-ros-with-env ros2 run ros2_gremsy gremsy_node --ros-args --remap __ns:=/$DRONE_DEVICE_ID -p com_port:=/dev/ttyUSB0 &
+ros-with-env ros2 launch ros2_gremsy ros_gremsy_gimbal.launch.py serial_port:=${GIMBAL_SERIAL_PORT} &
 child=$!
 
 echo "Waiting for pid $child"
@@ -33,9 +33,17 @@ wait $child
 RESULT=$?
 
 if [ $RESULT -ne 0 ]; then
+<<<<<<< HEAD
 		echo "ERROR: Ros2 Gresmy node failed with code $RESULT" >&2
 		exit $RESULT
 else
 		echo "INFO: Ros2 Gresmy node finished successfully, but returning 125 code for docker to restart properly." >&2
 		exit 125
+=======
+    echo "ERROR: gremsy_node failed with code $RESULT" >&2
+    exit $RESULT
+else
+    echo "INFO: gremsy_node finished successfully, but returning 125 code for docker to restart properly." >&2
+    exit 125
+>>>>>>> Add SIGTERM handler which is converted to SIGINT
 fi
