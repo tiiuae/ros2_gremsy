@@ -6,7 +6,7 @@
 #include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <geometry_msgs/msg/quaternion_stamped.hpp>
 #include <std_srvs/srv/set_bool.hpp>
-#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 #include "ros2_gremsy/utils.hpp"
 #include <../../gSDK/src/gimbal_interface.h>
