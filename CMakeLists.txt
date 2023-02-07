@@ -12,6 +12,7 @@ find_package(rclcpp REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_eigen REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -38,7 +39,7 @@ add_library(gremsy ${SOURCES})
 #  $<INSTALL_INTERFACE:include>
 #  ${CMAKE_SOURCE_DIR}/gSDK/src)
 
-ament_target_dependencies(gremsy PUBLIC rclcpp std_msgs std_srvs sensor_msgs geometry_msgs tf2 tf2_geometry_msgs Eigen3 builtin_interfaces)
+ament_target_dependencies(gremsy PUBLIC rclcpp std_msgs std_srvs sensor_msgs geometry_msgs tf2 tf2_geometry_msgs tf2_eigen Eigen3 builtin_interfaces)
 
 
 # DepthAI GStreamer as separate node
