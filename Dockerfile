@@ -1,4 +1,4 @@
-FROM ghcr.io/tiiuae/fog-ros-baseimage-builder:sha-b1c9665 AS builder
+FROM ghcr.io/tiiuae/fog-ros-baseimage-builder:v2.1.0 AS builder
 
 COPY . /main_ws/src/
 
@@ -11,7 +11,7 @@ RUN /packaging/build.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-b1c9665
+FROM ghcr.io/tiiuae/fog-ros-baseimage:v2.1.0
 
 ENTRYPOINT exec ros-with-env ros2 run ros2_gremsy gremsy_node --ros-args --remap __ns:=/$DRONE_DEVICE_ID -p com_port:=/dev/ttyUSB0
 
