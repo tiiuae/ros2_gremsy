@@ -16,12 +16,7 @@ _term() {
 # Use SIGTERM or TERM, does not seem to make any difference.
 trap _term TERM
 
-ROS_FLAGS=""
-if [[ ${SIMULATION+x} != "" ]]; then
-	ROS_FLAGS="use_sim_time:=true ${ROS_FLAGS}"
-fi
-
-ros-with-env ros2 run ros2_gremsy gremsy_node --ros-args --remap __ns:=/$DRONE_DEVICE_ID -p com_port:=/dev/ttyUSB0 -p ${ROS_FLAGS} &
+ros-with-env ros2 run ros2_gremsy gremsy_node --ros-args --remap __ns:=/$DRONE_DEVICE_ID -p com_port:=/dev/ttyUSB0 &
 child=$!
 
 echo "Waiting for pid $child"
