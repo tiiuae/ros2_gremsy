@@ -4,6 +4,7 @@ on:
   repository_dispatch:
     types: [fog-ros-baseimage-update]
   push:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -47,6 +48,7 @@ jobs:
             type=semver,pattern={{version}}
             type=raw,value=latest
             ${{ env.IMAGE_TAG_FORMAT }}
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
