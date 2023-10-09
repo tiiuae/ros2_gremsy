@@ -11,7 +11,7 @@ RUN /packaging/build.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:v2.1.0
+FROM ghcr.io/tiiuae/fog-ros-baseimage:v3.0.1
 
 ENTRYPOINT exec ros-with-env ros2 run ros2_gremsy gremsy_node --ros-args --remap __ns:=/$DRONE_DEVICE_ID -p com_port:=/dev/ttyUSB0
 
