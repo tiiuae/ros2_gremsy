@@ -1,4 +1,4 @@
-FROM ghcr.io/tiiuae/fog-ros-baseimage-builder:v2.1.0 AS builder
+FROM ghcr.io/tiiuae/fog-ros-baseimage-builder:v3.0.1 AS builder
 
 COPY . /main_ws/src/
 
