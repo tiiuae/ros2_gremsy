@@ -18,7 +18,7 @@ jobs:
           submodules: recursive
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
         with:
           platforms: amd64,riscv64,arm64
 
