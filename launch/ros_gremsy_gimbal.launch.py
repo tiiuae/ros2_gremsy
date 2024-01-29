@@ -35,6 +35,9 @@ def generate_launch_description():
 
             }],
             output='screen',
+            remappings=[
+                ('ros2_gremsy/gimbal_goal', '/external/ros2_gremsy/gimbal_goal'),
+            ],
         ),
     ),
 
